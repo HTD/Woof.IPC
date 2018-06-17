@@ -3,15 +3,23 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Woof</RootNamespace>
-    <Authors>Adam Łyskawa, Kamil Marzec</Authors>
+    <Authors>Adam Łyskawa</Authors>
     <Company>CodeDog Ltd.</Company>
     <Description>Inter-Process Communication library.</Description>
     <Copyright>(c)2018 by CodeDog Ltd.</Copyright>
     <PackageLicenseUrl>https://en.wikipedia.org/wiki/MIT_License</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/HTD/Woof.IPC</PackageProjectUrl>
     <PackageTags>code core codedog dotnet system ipc</PackageTags>
-    <PackageReleaseNotes>Initial release.</PackageReleaseNotes>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageReleaseNotes>XML documentation completed.</PackageReleaseNotes>
+    <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
+    <Version>1.0.1</Version>
+    <Product>Woof.IPC</Product>
+    <PackageId>Woof.IPC</PackageId>
+    <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DocumentationFile>bin\Release\netstandard2.0\Woof.IPC.xml</DocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>

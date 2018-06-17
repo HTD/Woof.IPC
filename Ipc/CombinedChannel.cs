@@ -211,9 +211,12 @@ namespace Woof.Ipc {
 
         void OnClientDisconnected(EventArgs e) => ClientDisconnected?.Invoke(this, e);
 
+        /// <summary>
+        /// Disposes the initial and main channels if applicable.
+        /// </summary>
         public void Dispose() {
-            if (InitialChannel != null) InitialChannel.Dispose();
-            if (MainChannel != null) MainChannel.Dispose();
+            InitialChannel?.Dispose();
+            MainChannel?.Dispose();
         }
 
         #endregion
