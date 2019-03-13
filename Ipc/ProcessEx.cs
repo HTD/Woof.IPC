@@ -660,7 +660,7 @@ namespace Woof.Ipc {
                 if (!GetSessionUserToken(ref hUserToken)) throw new UnauthorizedAccessException("GetSessionUserToken failed.");
                 uint dwCreationFlags = CREATE_UNICODE_ENVIRONMENT | (uint)(CREATE_NO_WINDOW);
                 StartupInfo.wShowWindow = (short)(SW.SW_HIDE);
-                StartupInfo.lpDesktop = "winsta0\\default";
+                StartupInfo.lpDesktop = null; // "winsta0\\default";
                 if (!NativeMethods.CreateEnvironmentBlock(ref pEnv, hUserToken, false)) throw new InvalidOperationException("CreateEnvironmentBlock failed.");
                 var ok = NativeMethods.CreateProcessAsUser(
                     hUserToken, // A handle to the primary token that represents a user
