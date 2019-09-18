@@ -1,18 +1,23 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Woof</RootNamespace>
     <Authors>Adam Łyskawa</Authors>
-    <Company>CodeDog Ltd.</Company>
-    <Description>Inter-Process Communication library.</Description>
-    <Copyright>(c)2018 by CodeDog Ltd.</Copyright>
+    <Company>CodeDog Ltd</Company>
+    <Description>Full safe inter-process communication solution.
+Allows to start processes and exchange data between them.
+Provides support to start processes in user context even if the parent process is started from SYSTEM account.
+Provides a method for immediate session lockdown for the current local UI user.</Description>
+    <Copyright>(c)2019 by CodeDog Ltd</Copyright>
     <PackageLicenseUrl>https://en.wikipedia.org/wiki/MIT_License</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/HTD/Woof.IPC</PackageProjectUrl>
     <PackageTags>code core codedog dotnet system ipc</PackageTags>
-    <PackageReleaseNotes>XML documentation completed.</PackageReleaseNotes>
+    <PackageReleaseNotes>FIX: Memory leaks.
+REMOVE: Dependencies.
+ADD: UserProcess.DisconnectActiveSession().</PackageReleaseNotes>
     <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
-    <Version>1.0.1</Version>
+    <Version>2.0.0</Version>
     <Product>Woof.IPC</Product>
     <PackageId>Woof.IPC</PackageId>
     <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
@@ -29,8 +34,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MSTest.TestFramework" Version="1.4.0" />
-    <PackageReference Include="System.IO.Pipes.AccessControl" Version="4.5.0" />
+    <Compile Remove="Ipc\ProcessEx.cs" />
   </ItemGroup>
 
 </Project>

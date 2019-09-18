@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.IO.Pipes;
-using System.Security.Principal;
 using System.Text;
 
 namespace Woof.Ipc {
@@ -88,7 +87,7 @@ namespace Woof.Ipc {
         /// <param name="keyData">Key data used for encryption, for default null new key will be generated.</param>
         public Channel(Modes mode, PipeDirection direction, string id = null, byte[] keyData = null) {
             Mode = mode;
-            IsAnonymousPipe = id == null || Int32.TryParse(id, out var pipeId);
+            IsAnonymousPipe = id == null || Int32.TryParse(id, out _);
             switch (mode) {
                 case Modes.Client:
                     Pipe = IsAnonymousPipe
@@ -255,46 +254,52 @@ namespace Woof.Ipc {
         /// Default buffer size for messages: 64KB.
         /// </summary>
         const int DefaultMessageBufferSize = 0x10000;
+        
         /// <summary>
         /// Generic pipe <see cref="Stream"/>.
         /// </summary>
         private readonly Stream Pipe;
+        
         /// <summary>
         /// True if underlying pipe is <see cref="AnonymousPipeClientStream"/> or <see cref="AnonymousPipeServerStream"/>.
         /// </summary>
         private readonly bool IsAnonymousPipe;
+        
         /// <summary>
         /// <see cref="MemoryStream"/> used as write cache.
         /// </summary>
-        private MemoryStream WriteCache;
+        private MemoryStream WriteCache { get; set; }
+        
         /// <summary>
         /// Data serialization module.
         /// </summary>
-        private Serialization Serialization;
+        private readonly Serialization Serialization;
+        
         /// <summary>
         /// Data compression module.
         /// </summary>
         private Compression Compression;
+        
         /// <summary>
         /// Data encryption module.
         /// </summary>
         private Encryption Encryption;
 
-        /// <summary>
-        /// <see cref="PipeSecurity"/> object for main <see cref="NamedPipeServerStream"/>.
-        /// </summary>
-        private PipeSecurity IpcSecurity {
-            get {
-                var security = new PipeSecurity();
-                var sid = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
-                security.AddAccessRule(new PipeAccessRule(
-                    sid,
-                    PipeAccessRights.ReadWrite | PipeAccessRights.Synchronize,
-                    System.Security.AccessControl.AccessControlType.Allow
-                ));
-                return security;
-            }
-        }
+        ///// <summary>
+        ///// <see cref="PipeSecurity"/> object for main <see cref="NamedPipeServerStream"/>.
+        ///// </summary>
+        //private PipeSecurity IpcSecurity {
+        //    get {
+        //        var security = new PipeSecurity();
+        //        var sid = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
+        //        security.AddAccessRule(new PipeAccessRule(
+        //            sid,
+        //            PipeAccessRights.ReadWrite | PipeAccessRights.Synchronize,
+        //            System.Security.AccessControl.AccessControlType.Allow
+        //        ));
+        //        return security;
+        //    }
+        //}
 
         /// <summary>
         /// Processes received data with encryption and compression modules.

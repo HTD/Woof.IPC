@@ -22,6 +22,18 @@ namespace Woof.Ipc {
         public Process ActualProcess { get; private set; }
 
         /// <summary>
+        /// Gets the command line arguments collection created with the process.
+        /// </summary>
+        public ProcessArguments Arguments { get; }
+
+        /// <summary>
+        /// Gets the sets of values used to start the process.
+        /// </summary>
+        public ProcessStartInfo StartInfo { get; }
+
+        //public ProcessArguments ArgumentsTemplate { get; set; }
+
+        /// <summary>
         /// True if the process has been disposed.
         /// </summary>
         public bool IsDisposed { get; private set; }
@@ -46,6 +58,8 @@ namespace Woof.Ipc {
         /// </summary>
         public event EventHandler ClientExited;
 
+        
+
         /// <summary>
         /// Creates new IPC client process.
         /// </summary>
@@ -61,7 +75,8 @@ namespace Woof.Ipc {
                 for (int i = 0; i < arguments.Length; i++) if (arguments[i] == "PIPE_ID") arguments[i] = initialPipeId;
             }
             else arguments = new[] { initialPipeId };
-            Client = new ProcessEx(path, arguments);
+            Arguments = new ProcessArguments(ArgumentsTemplate = arguments);
+            StartInfo = new ProcessStartInfo(path, Arguments.ToString());
             IpcChannel.Start();
         }
 
@@ -70,38 +85,42 @@ namespace Woof.Ipc {
         /// </summary>
         /// <param name="placeholder">Placeholder string.</param>
         /// <param name="value">String value to set.</param>
-        public void SetArg(string placeholder, string value) => Client.SetArg(placeholder, value);
+        public void SetArg(string placeholder, string value) {
+            var l = ArgumentsTemplate.Length;            
+            string arg;
+            for (int i = 0; i < l; i++) {
+                arg = ArgumentsTemplate[i];
+                Arguments[i] = arg == placeholder ? value : arg;
+            }
+            StartInfo.Arguments = Arguments.ToString();
+        }
 
         /// <summary>
         /// Replaces multiple placeholders in executable arguments set with dictionary values.
         /// </summary>
         /// <param name="map">A dictionary of placeholder => value pairs.</param>
-        public void SetArgs(Dictionary<string, string> map) => Client.SetArgs(map);
+        public void SetArgs(Dictionary<string, string> map) {
+            var l = ArgumentsTemplate.Length;
+            string arg;
+            for (int i = 0; i < l; i++) {
+                arg = ArgumentsTemplate[i];
+                Arguments[i] = map.ContainsKey(arg) ? map[arg] : arg;
+            }
+            StartInfo.Arguments = Arguments.ToString();
+        }
 
         /// <summary>
         /// Starts client process.
         /// </summary>
-        /// <returns>True if a process resource is started; false if no new process resource is started (for example, if an existing process is reused).</returns>
-        public bool Start() {
+        public void Start() {
             if (ActualProcess != null) {
                 if (ActualProcess.HasExited) IpcChannel.Reinitialize();
-                else return false;
+                else return;
             }
-            Client.StartAsCurrentUser = StartAsCurrentUser;
-            if (ActualProcess == null && !StartAsCurrentUser) {
-                Client.EnableRaisingEvents = true;
-                Client.Exited += PassClientExited;
-            }
-            var startResult = Client.Start();
-            if (ActualProcess != null && StartAsCurrentUser) ActualProcess.Exited -= PassClientExited;
-            ActualProcess = Client.ActualProcess;
-            if (startResult && StartAsCurrentUser) {
-                ActualProcess.EnableRaisingEvents = true;
-                ActualProcess.Exited += PassClientExited;
-            }
-            if (startResult && ActualProcess != null && !ActualProcess.HasExited)
-                OnClientStarted(EventArgs.Empty);
-            return startResult;
+            ActualProcess = StartAsCurrentUser ? UserProcess.Start(StartInfo) : Process.Start(StartInfo);
+            ActualProcess.Exited += PassClientExited;
+            ActualProcess.EnableRaisingEvents = true;
+            if (!ActualProcess.HasExited) OnClientStarted(EventArgs.Empty);
         }
 
         /// <summary>
@@ -126,8 +145,12 @@ namespace Woof.Ipc {
 
         #region Private
 
-        readonly ProcessEx Client;
         readonly CombinedChannel IpcChannel;
+
+        /// <summary>
+        /// Contains original process arguments as a template for <see cref="SetArg(string, string)"/> and <see cref="SetArgs(Dictionary{string, string})"/>.
+        /// </summary>
+        readonly string[] ArgumentsTemplate;
 
         /// <summary>
         /// Passes <see cref="CombinedChannel.DataReceived"/> event from combined channel to client process.
@@ -183,7 +206,6 @@ namespace Woof.Ipc {
                 IsDisposed = true;
                 if (IpcChannel != null) IpcChannel.Dispose();
                 if (ActualProcess != null) ActualProcess.Dispose();
-                if (Client != null) Client.Dispose();
             }
         }
 
