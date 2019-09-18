@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.IO.Pipes;
+using System.Security.Principal;
 using System.Text;
 
 namespace Woof.Ipc {
@@ -98,7 +99,8 @@ namespace Woof.Ipc {
                     Pipe = IsAnonymousPipe
                         ? (Stream)new AnonymousPipeServerStream(direction, HandleInheritability.Inheritable, MessageBufferSize)
                         : (Stream)new NamedPipeServerStream(id, direction, 1, PipeTransmissionMode.Message, PipeOptions.Asynchronous, MessageBufferSize, MessageBufferSize);
-                    // TODO: test if it works without IpcSecurity parameter!
+                    // TODO: REMOVE THIS COMMENT IF WORKS WITH THE LINE BELOW. Remove IpcSecurity AND line below otherwise.
+                    if (Pipe is NamedPipeServerStream namedServerPipe) namedServerPipe.SetAccessControl(IpcSecurity);
                     break;
                 case Modes.Stream:
                     throw new ArgumentException("Invalid arguments for stream mode.");
@@ -285,21 +287,21 @@ namespace Woof.Ipc {
         /// </summary>
         private Encryption Encryption;
 
-        ///// <summary>
-        ///// <see cref="PipeSecurity"/> object for main <see cref="NamedPipeServerStream"/>.
-        ///// </summary>
-        //private PipeSecurity IpcSecurity {
-        //    get {
-        //        var security = new PipeSecurity();
-        //        var sid = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
-        //        security.AddAccessRule(new PipeAccessRule(
-        //            sid,
-        //            PipeAccessRights.ReadWrite | PipeAccessRights.Synchronize,
-        //            System.Security.AccessControl.AccessControlType.Allow
-        //        ));
-        //        return security;
-        //    }
-        //}
+        /// <summary>
+        /// <see cref="PipeSecurity"/> object for main <see cref="NamedPipeServerStream"/>.
+        /// </summary>
+        private PipeSecurity IpcSecurity {
+            get {
+                var security = new PipeSecurity();
+                var sid = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
+                security.AddAccessRule(new PipeAccessRule(
+                    sid,
+                    PipeAccessRights.ReadWrite | PipeAccessRights.Synchronize,
+                    System.Security.AccessControl.AccessControlType.Allow
+                ));
+                return security;
+            }
+        }
 
         /// <summary>
         /// Processes received data with encryption and compression modules.

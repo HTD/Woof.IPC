@@ -167,7 +167,7 @@ namespace Woof.Ipc {
         void PassClientDisconnected(object sender, EventArgs e) => OnClientDisconnected(e);
 
         /// <summary>
-        /// Passes <see cref="ClientExited"/> event from underlying <see cref="ProcessEx"/> to client process.
+        /// Passes <see cref="ClientExited"/> event from underlying <see cref="Process"/> to client process.
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
@@ -198,7 +198,7 @@ namespace Woof.Ipc {
         void OnClientStarted(EventArgs e) => ClientStarted?.Invoke(this, e);
 
         /// <summary>
-        /// Disposes combined communication channel and underlying <see cref="Process"/> or <see cref="ProcessEx"/> object.
+        /// Disposes combined communication channel and underlying <see cref="Process"/>.
         /// </summary>
         public void Dispose() {
             if (!IsDisposed) {

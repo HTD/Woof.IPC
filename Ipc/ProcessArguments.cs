@@ -92,6 +92,10 @@ namespace Woof.Ipc {
             }
         }
 
+        /// <summary>
+        /// Returns an enumerator that iterates through the collection.
+        /// </summary>
+        /// <returns>An enumerator that can be used to iterate through the collection.</returns>
         public IEnumerator<string> GetEnumerator() => ((IEnumerable<string>)Items).GetEnumerator();
 
         IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable<string>)Items).GetEnumerator();

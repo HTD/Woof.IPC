@@ -13,11 +13,9 @@ Provides a method for immediate session lockdown for the current local UI user.<
     <PackageLicenseUrl>https://en.wikipedia.org/wiki/MIT_License</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/HTD/Woof.IPC</PackageProjectUrl>
     <PackageTags>code core codedog dotnet system ipc</PackageTags>
-    <PackageReleaseNotes>FIX: Memory leaks.
-REMOVE: Dependencies.
-ADD: UserProcess.DisconnectActiveSession().</PackageReleaseNotes>
+    <PackageReleaseNotes>FIX: UnauthorizedAccessException. Probably...</PackageReleaseNotes>
     <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
-    <Version>2.0.0</Version>
+    <Version>2.0.2</Version>
     <Product>Woof.IPC</Product>
     <PackageId>Woof.IPC</PackageId>
     <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
@@ -25,6 +23,10 @@ ADD: UserProcess.DisconnectActiveSession().</PackageReleaseNotes>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DocumentationFile>bin\Release\netstandard2.0\Woof.IPC.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DocumentationFile>C:\Source\Woof\2.x\Woof.IPC\Woof.IPC.xml</DocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -35,6 +37,10 @@ ADD: UserProcess.DisconnectActiveSession().</PackageReleaseNotes>
 
   <ItemGroup>
     <Compile Remove="Ipc\ProcessEx.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IO.Pipes.AccessControl" Version="4.5.1" />
   </ItemGroup>
 
 </Project>
