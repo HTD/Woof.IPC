@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package>
+  <metadata>
+    <id>Woof.IPC</id>
+    <version>2.6.1</version>
+    <title>Woof.IPC</title>
+    <authors>Adam Łyskawa</authors>
+    <owners>Adam Łyskawa</owners>
+    <licenseUrl>https://en.wikipedia.org/wiki/MIT_License</licenseUrl>
+    <projectUrl>https://github.com/HTD/Woof.IPC</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Full safe inter-process communication solution.
+Allows to start processes and exchange data between them.
+Including processes started by different users, including SYSTEM account.
+
+Provides support to start processes in user context when the parent process is started from SYSTEM account.
+Provides a method for immediate session lockdown for the current local UI user.</description>
+    <releaseNotes>Passing production tests. This version is far from being optimal, however it's stable and tested.</releaseNotes>
+    <copyright>(c)2019 by CodeDog Ltd</copyright>
+    <tags>code codedog dotnet windows system ipc process</tags>
+  </metadata>
+</package>

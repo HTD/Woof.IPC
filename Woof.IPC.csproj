@@ -1,46 +1,65 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Woof</RootNamespace>
-    <Authors>Adam Łyskawa</Authors>
-    <Company>CodeDog Ltd</Company>
-    <Description>Full safe inter-process communication solution.
-Allows to start processes and exchange data between them.
-Provides support to start processes in user context even if the parent process is started from SYSTEM account.
-Provides a method for immediate session lockdown for the current local UI user.</Description>
-    <Copyright>(c)2019 by CodeDog Ltd</Copyright>
-    <PackageLicenseUrl>https://en.wikipedia.org/wiki/MIT_License</PackageLicenseUrl>
-    <PackageProjectUrl>https://github.com/HTD/Woof.IPC</PackageProjectUrl>
-    <PackageTags>code core codedog dotnet system ipc</PackageTags>
-    <PackageReleaseNotes>FIX: UnauthorizedAccessException. Probably...</PackageReleaseNotes>
-    <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
-    <Version>2.0.2</Version>
-    <Product>Woof.IPC</Product>
-    <PackageId>Woof.IPC</PackageId>
-    <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
+    <AssemblyName>Woof.IPC</AssemblyName>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+    <ProjectGuid>{4078A020-8EB1-4F94-9B34-83ED4084B5CB}</ProjectGuid>
   </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <DocumentationFile>bin\Release\netstandard2.0\Woof.IPC.xml</DocumentationFile>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DocumentationFile>C:\Source\Woof\2.x\Woof.IPC\Woof.IPC.xml</DocumentationFile>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>bin\Release\Woof.IPC.xml</DocumentationFile>
   </PropertyGroup>
-
   <ItemGroup>
-    <Compile Remove="Woof.IPC.Tests\**" />
-    <EmbeddedResource Remove="Woof.IPC.Tests\**" />
-    <None Remove="Woof.IPC.Tests\**" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
-
   <ItemGroup>
-    <Compile Remove="Ipc\ProcessEx.cs" />
+    <Compile Include="Ipc\Channel.cs" />
+    <Compile Include="Ipc\ClientProcess.cs" />
+    <Compile Include="Ipc\CombinedChannel.cs" />
+    <Compile Include="Ipc\Compression.cs" />
+    <Compile Include="Ipc\Encryption.cs" />
+    <Compile Include="Ipc\ProcessArguments.cs" />
+    <Compile Include="Ipc\ProcessExtensions.cs" />
+    <Compile Include="Ipc\Serialization.cs" />
+    <Compile Include="Ipc\UserProcess.cs" />
+    <Compile Include="Ipc\Win32Imports\NativeMethods.cs" />
+    <Compile Include="Ipc\Win32Types\Enumerations.cs" />
+    <Compile Include="Ipc\Win32Types\ProcessInformation.cs" />
+    <Compile Include="Ipc\Win32Types\StartupInfo.cs" />
+    <Compile Include="Ipc\Win32Types\WtsSessionInfo.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
-
   <ItemGroup>
-    <PackageReference Include="System.IO.Pipes.AccessControl" Version="4.5.1" />
+    <None Include="package.nuspec" />
   </ItemGroup>
-
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

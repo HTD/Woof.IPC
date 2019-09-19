@@ -7,11 +7,26 @@ using System.Text;
 namespace Woof.Ipc {
 
     /// <summary>
-    /// IPC channel based on named or anonymous pipe.
+    /// IPC channel based on named OR anonymous pipe.
     /// </summary>
     public sealed class Channel : IDisposable {
 
         #region Public
+
+        #region Events
+
+        /// <summary>
+        /// Occurs when data from server is received.
+        /// </summary>
+        public event EventHandler<DataEventArgs> DataReceived;
+        /// <summary>
+        /// Occurs when client has disconnected from server.
+        /// </summary>
+        public event EventHandler ClientDisconnected;
+
+        #endregion
+
+        #region Properties
 
         /// <summary>
         /// Gets anonymous pipe ID.
@@ -68,16 +83,11 @@ namespace Woof.Ipc {
         /// <summary>
         /// Pipe communication mode: Client, Server or Stream.
         /// </summary>
-        public readonly Modes Mode;
+        public Modes Mode { get; }
 
-        /// <summary>
-        /// Occurs when data from server is received.
-        /// </summary>
-        public event EventHandler<DataEventArgs> DataReceived;
-        /// <summary>
-        /// Occurs when client has disconnected from server.
-        /// </summary>
-        public event EventHandler ClientDisconnected;
+        #endregion
+
+        #region Constructors
 
         /// <summary>
         /// Creates IPC channel.
@@ -95,15 +105,13 @@ namespace Woof.Ipc {
                         ? (Stream)new AnonymousPipeClientStream(direction, id)
                         : (Stream)new NamedPipeClientStream(".", id, direction);
                     break;
-                case Modes.Server:
+                case Modes.Server: // IMPORTANT: PipeSecurity setting is necessary to connect processes of different users with named pipes!
                     Pipe = IsAnonymousPipe
                         ? (Stream)new AnonymousPipeServerStream(direction, HandleInheritability.Inheritable, MessageBufferSize)
-                        : (Stream)new NamedPipeServerStream(id, direction, 1, PipeTransmissionMode.Message, PipeOptions.Asynchronous, MessageBufferSize, MessageBufferSize);
-                    // TODO: REMOVE THIS COMMENT IF WORKS WITH THE LINE BELOW. Remove IpcSecurity AND line below otherwise.
-                    if (Pipe is NamedPipeServerStream namedServerPipe) namedServerPipe.SetAccessControl(IpcSecurity);
-                    break;
+                        : (Stream)new NamedPipeServerStream(id, direction, 1, PipeTransmissionMode.Message, PipeOptions.Asynchronous, MessageBufferSize, MessageBufferSize, IpcSecurity);
+                    break; // WARNING: FAILING TO SET PipeSecurity and trying to send data to a process owned by different user will cause this to FAIL SILENTLY!
                 case Modes.Stream:
-                    throw new ArgumentException("Invalid arguments for stream mode.");
+                    throw new ArgumentException("Invalid arguments for stream mode");
             }
             if (keyData != null) Encryption = new Encryption(keyData);
             Serialization = new Serialization();
@@ -120,6 +128,10 @@ namespace Woof.Ipc {
             if (keyData != null) Encryption = new Encryption(keyData);
             Serialization = new Serialization();
         }
+
+        #endregion
+
+        #region Methods
 
         /// <summary>
         /// Starts communication.
@@ -216,6 +228,8 @@ namespace Woof.Ipc {
         /// <param name="data">Input string.</param>
         public void WriteUTF8(string data) => WriteBytes(Encoding.UTF8.GetBytes(data));
 
+        #endregion
+
         /// <summary>
         /// Underlying pipe operation modes.
         /// </summary>
@@ -288,18 +302,19 @@ namespace Woof.Ipc {
         private Encryption Encryption;
 
         /// <summary>
-        /// <see cref="PipeSecurity"/> object for main <see cref="NamedPipeServerStream"/>.
+        /// <see cref="PipeSecurity"/> object for main <see cref="NamedPipeServerStream"/>.<br/>
+        /// This is necessary to allow a named pipe to connect processes started by different users.
         /// </summary>
         private PipeSecurity IpcSecurity {
             get {
-                var security = new PipeSecurity();
+                var pipeSecurity = new PipeSecurity();
                 var sid = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
-                security.AddAccessRule(new PipeAccessRule(
+                pipeSecurity.AddAccessRule(new PipeAccessRule(
                     sid,
                     PipeAccessRights.ReadWrite | PipeAccessRights.Synchronize,
                     System.Security.AccessControl.AccessControlType.Allow
                 ));
-                return security;
+                return pipeSecurity;
             }
         }
 
@@ -380,7 +395,7 @@ namespace Woof.Ipc {
         /// <param name="e"></param>
         private void OnClientDisconnected(EventArgs e) => ClientDisconnected?.Invoke(this, e);
 
-        #region IDisposable Support
+        #region IDisposable Impl.
 
         /// <summary>
         /// True if pipe streams has been disposed.

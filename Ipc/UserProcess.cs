@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 using Woof.Ipc.Win32Imports;
@@ -16,21 +17,17 @@ namespace Woof.Ipc {
         /// <summary>
         /// Gets a value indicationg whether the current account is Windows System account.
         /// </summary>
-        public static bool IsSystemContext => Environment.UserName == "SYSTEM";
+        public static bool IsSystemContext => Environment.UserName == "SYSTEM"; // without using System.Security.Principal
 
         /// <summary>
-        /// Starts a process as user from SYSTEM account context, in user context behaves exactly as <see cref="Process.Start(ProcessStartInfo)"/>.
+        /// If the current process is not SYSTEM, method behaves exactly as <see cref="Process.Start(ProcessStartInfo)"/>.
+        /// Otherwise the process will be started as current non-system user based on active GUI session.<br/>
         /// IMPORTANT: UseShellExecute property of the <see cref="ProcessStartInfo"/> provided must be false!
         /// </summary>
         /// <param name="processStartInfo">
         /// The <see cref="System.Diagnostics.ProcessStartInfo"/> that contains the information that is 
         /// used to start the process, including the file name and any command-line arguments.</param>
-        /// <returns>A new System.Diagnostics.Process that is associated with the process resource,
-        /// or null if no process resource is started. Note that a new process that’s started
-        /// alongside already running instances of the same process will be independent from
-        /// the others. In addition, Start may return a non-null Process with its System.Diagnostics.Process.HasExited
-        /// property already set to true. In this case, the started process may have activated
-        /// an existing instance of itself and then exited.</returns>
+        /// <returns>A new <see cref="Process"/> that is associated with the process resource.</returns>
         public static Process Start(ProcessStartInfo processStartInfo)
             => (IsSystemContext && !processStartInfo.UseShellExecute)
                 ? CreateProcessAsUser(processStartInfo)
@@ -41,7 +38,7 @@ namespace Woof.Ipc {
         /// </summary>
         /// <returns>The process created.</returns>
         /// <exception cref="ArgumentException">The process specified by the processId parameter is not running. The identifier might be expired.</exception>
-        /// <exception cref="InvalidOperationException"><see cref="NativeMethods.CreateEnvironmentBlock(ref IntPtr, IntPtr, bool)"/> or <see cref="NativeMethods.CreateProcessAsUser(IntPtr, string, string, IntPtr, IntPtr, bool, ProcessCreationFlags, IntPtr, string, ref StartupInfo, out ProcessInformation)"/> failed.</exception>
+        /// <exception cref="InvalidOperationException">CreateEnvironmentBlock or CreateProcessAsUser failed.</exception>
         /// <exception cref="UnauthorizedAccessException"><see cref="GetSessionUserToken(ref IntPtr)"/> failed.</exception>
         public static Process CreateProcessAsUser(ProcessStartInfo startInfo) {
             var command = Path.GetFileNameWithoutExtension(startInfo.FileName);
@@ -87,6 +84,15 @@ namespace Woof.Ipc {
         }
 
         /// <summary>
+        /// Disconnects the active session. The local user using the computer is logged off immediately.
+        /// </summary>
+        public static void DisconnectActiveSession() {
+            var wtsCurrentServerHandle = IntPtr.Zero;
+            var activeSessionId = GetActiveSessionId();
+            NativeMethods.WTSDisconnectSession(wtsCurrentServerHandle, activeSessionId, false);
+        }
+
+        /// <summary>
         /// Gets the active session identifier.
         /// </summary>
         /// <returns>Active session identifier.</returns>
@@ -111,13 +117,37 @@ namespace Woof.Ipc {
         }
 
         /// <summary>
-        /// Disconnects the active session. The local user using the computer is logged off immediately.
+        /// Returns the process target directory assuming its path is absolute or relative to the application main executable.
         /// </summary>
-        public static void DisconnectActiveSession() {
-            var wtsCurrentServerHandle = IntPtr.Zero;
-            var activeSessionId = GetActiveSessionId();
-            NativeMethods.WTSDisconnectSession(wtsCurrentServerHandle, activeSessionId, false);
+        /// <param name="path">Path to the process target executable file.</param>
+        /// <returns>Absolute direrectory path to the target executable file.</returns>
+        public static string GetExeDirectory(string path = null) {
+            var dir = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+            if (path is null) return dir;
+            dir = Path.IsPathRooted(path)
+                ? Path.GetDirectoryName(path)
+                : Path.Combine(dir, Path.GetDirectoryName(path));
+            return Path.GetFullPath(dir);
         }
+
+        /// <summary>
+        /// Sane <see cref="ProcessStartInfo"/> instance for the <see cref="UserProcess"/> and path.<br/>
+        /// Working directory set, UseShellExecute = false, CreateNoWindow = true.
+        /// </summary>
+        /// <param name="path">Path to the target executable file.</param>
+        /// <param name="arguments">Optional arguments for the new process.</param>
+        /// <returns>A sane <see cref="ProcessStartInfo"/> instance.</returns>
+        /// <remarks>
+        /// This is absolutely crucial for <see cref="UserProcess"/>.
+        /// Failing to set the options of the <see cref="ProcessStartInfo"/> will result horrific misbehavior
+        /// and cryptic error messages if luckily the exceptions would be thrown.
+        /// </remarks>
+        public static ProcessStartInfo GetStartInfo(string path, ProcessArguments arguments = null) => new ProcessStartInfo(path) {
+            Arguments = arguments is null ? "" : arguments.ToString(),
+            WorkingDirectory = UserProcess.GetExeDirectory(path),
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
 
         /// <summary>
         /// Gets the user token from the currently active session

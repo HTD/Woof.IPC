@@ -12,11 +12,6 @@ namespace Woof.Ipc {
         #region Public
 
         /// <summary>
-        /// Gets or sets an options of starting process as current user. Set true to interact with user sessions from System process.
-        /// </summary>
-        public bool StartAsCurrentUser { get; set; }
-
-        /// <summary>
         /// Returns underlying client process as <see cref="Process"/>.
         /// </summary>
         public Process ActualProcess { get; private set; }
@@ -30,8 +25,6 @@ namespace Woof.Ipc {
         /// Gets the sets of values used to start the process.
         /// </summary>
         public ProcessStartInfo StartInfo { get; }
-
-        //public ProcessArguments ArgumentsTemplate { get; set; }
 
         /// <summary>
         /// True if the process has been disposed.
@@ -58,8 +51,6 @@ namespace Woof.Ipc {
         /// </summary>
         public event EventHandler ClientExited;
 
-        
-
         /// <summary>
         /// Creates new IPC client process.
         /// </summary>
@@ -76,7 +67,7 @@ namespace Woof.Ipc {
             }
             else arguments = new[] { initialPipeId };
             Arguments = new ProcessArguments(ArgumentsTemplate = arguments);
-            StartInfo = new ProcessStartInfo(path, Arguments.ToString());
+            StartInfo = UserProcess.GetStartInfo(path, Arguments);
             IpcChannel.Start();
         }
 
@@ -117,7 +108,7 @@ namespace Woof.Ipc {
                 if (ActualProcess.HasExited) IpcChannel.Reinitialize();
                 else return;
             }
-            ActualProcess = StartAsCurrentUser ? UserProcess.Start(StartInfo) : Process.Start(StartInfo);
+            ActualProcess = UserProcess.Start(StartInfo);
             ActualProcess.Exited += PassClientExited;
             ActualProcess.EnableRaisingEvents = true;
             if (!ActualProcess.HasExited) OnClientStarted(EventArgs.Empty);
@@ -141,16 +132,22 @@ namespace Woof.Ipc {
         /// <param name="data">Input string.</param>
         public void SendUTF8(string data) => IpcChannel.WriteUTF8(data);
 
+        /// <summary>
+        /// Disposes combined communication channel and underlying <see cref="Process"/>.
+        /// </summary>
+        public void Dispose() {
+            if (!IsDisposed) {
+                if (ActualProcess != null && !ActualProcess.HasExited) ActualProcess.Kill(); // when process is disposed, but not exited, it's killed here.
+                IsDisposed = true;
+                if (IpcChannel != null) IpcChannel.Dispose();
+                if (ActualProcess != null) ActualProcess.Dispose();
+            }
+        }
+
         #endregion
 
         #region Private
 
-        readonly CombinedChannel IpcChannel;
-
-        /// <summary>
-        /// Contains original process arguments as a template for <see cref="SetArg(string, string)"/> and <see cref="SetArgs(Dictionary{string, string})"/>.
-        /// </summary>
-        readonly string[] ArgumentsTemplate;
 
         /// <summary>
         /// Passes <see cref="CombinedChannel.DataReceived"/> event from combined channel to client process.
@@ -197,17 +194,19 @@ namespace Woof.Ipc {
         /// <param name="e"></param>
         void OnClientStarted(EventArgs e) => ClientStarted?.Invoke(this, e);
 
+        #region Data
+
         /// <summary>
-        /// Disposes combined communication channel and underlying <see cref="Process"/>.
+        /// Channel used to exchange data.
         /// </summary>
-        public void Dispose() {
-            if (!IsDisposed) {
-                if (ActualProcess != null && !ActualProcess.HasExited) ActualProcess.Kill(); // when process is disposed, but not exited, it's killed here.
-                IsDisposed = true;
-                if (IpcChannel != null) IpcChannel.Dispose();
-                if (ActualProcess != null) ActualProcess.Dispose();
-            }
-        }
+        readonly CombinedChannel IpcChannel;
+
+        /// <summary>
+        /// Contains original process arguments as a template for <see cref="SetArg(string, string)"/> and <see cref="SetArgs(Dictionary{string, string})"/>.
+        /// </summary>
+        readonly string[] ArgumentsTemplate;
+
+        #endregion
 
         #endregion
 
