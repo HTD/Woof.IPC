@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-
+using System.Windows.Interop;
 using Woof.Ipc.Win32Types;
 
 namespace Woof.Ipc.Win32Imports {
@@ -159,6 +159,17 @@ namespace Woof.Ipc.Win32Imports {
         [return: MarshalAs(UnmanagedType.Bool)]
         [DllImport("user32.dll", SetLastError = true)]
         public static extern bool PostThreadMessage(uint threadId, uint msg, IntPtr wParam, IntPtr lParam);
+
+        /// <summary>
+        /// Retrieves a message from the calling thread's message queue. The function dispatches incoming sent messages until a posted message is available for retrieval.
+        /// </summary>
+        /// <param name="lpMsg">MSG structure that receives message information from the thread's message queue.</param>
+        /// <param name="hWnd">A handle to the window whose messages are to be retrieved. The window must belong to the current thread. Use <see cref="IntPtr.Zero"/> to retrieve thread message.</param>
+        /// <param name="wMsgFilterMin">The integer value of the lowest message value to be retrieved.</param>
+        /// <param name="wMsgFilterMax">The integer value of the highest message value to be retrieved.</param>
+        /// <returns>Non-zero for any message but WM_QUIT, zero for WM_QUIT, -1 for error.</returns>
+        [DllImport("user32.dll")]
+        public static extern int GetMessage(out MSG lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
 
         /// <summary>
         /// Enumerates all nonchild windows associated with a thread by passing the handle to each window, in turn, to an application-defined callback function. EnumThreadWindows continues until the last window is enumerated or the callback function returns FALSE. To enumerate child windows of a particular window, use the EnumChildWindows function.

@@ -63,7 +63,7 @@ namespace Woof.Ipc {
                     InitialChannel = new Channel(mode, PipeDirection.Out);
                     MainChannel = new Channel(mode, PipeDirection.InOut, name);
                     InitalPipeId = InitialChannel.PipeId;
-                    InitialChannel.WriteBytes(MainChannel.KeyData);
+                    InitialChannel.WriteBytes(MainChannel.GetKeyData());
                     MainChannel.DataReceived += PassDataReceivedFromMainChannel;
                     MainChannel.ClientDisconnected += PassClientDisconnectedFromMainChannel;
                     break;
@@ -82,7 +82,7 @@ namespace Woof.Ipc {
         /// <summary>
         /// Writes key data again to the initial channel.
         /// </summary>
-        public void Reinitialize() => InitialChannel.WriteBytes(MainChannel.KeyData);
+        public void Reinitialize() => InitialChannel.WriteBytes(MainChannel.GetKeyData());
 
         /// <summary>
         /// Reads data from main channel as object.

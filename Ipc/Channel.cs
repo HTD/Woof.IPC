@@ -45,11 +45,9 @@ namespace Woof.Ipc {
         /// Gets key data bytes.
         /// If encryption is not configured yet, new key data is generated.
         /// </summary>
-        public byte[] KeyData {
-            get {
-                if (Encryption == null) Encryption = new Encryption();
-                return Encryption.KeyData;
-            }
+        public byte[] GetKeyData() {
+            if (Encryption == null) Encryption = new Encryption();
+            return Encryption.GetKeyData();
         }
 
         /// <summary>
@@ -149,10 +147,13 @@ namespace Woof.Ipc {
                         var nps = Pipe as NamedPipeServerStream;
                         try {
                             nps.BeginWaitForConnection(AsyncConnectionEstablished, null);
-                        } catch (IOException) {
+#pragma warning disable CA1031 // Do not catch general exception types
+                        }
+                        catch (IOException) {
                             nps.Disconnect();
                             nps.BeginWaitForConnection(AsyncConnectionEstablished, null);
                         }
+#pragma warning restore CA1031 // Do not catch general exception types
                     }
                     break;
             }
@@ -248,10 +249,12 @@ namespace Woof.Ipc {
             Stream
         }
 
+#pragma warning disable CA1034 // Nested types should not be visible
         /// <summary>
         /// Arguments for IPC data events.
         /// </summary>
         public class DataEventArgs : EventArgs {
+#pragma warning restore CA1034 // Nested types should not be visible
             /// <summary>
             /// Boxed object passed to event handler.
             /// </summary>
@@ -305,7 +308,7 @@ namespace Woof.Ipc {
         /// <see cref="PipeSecurity"/> object for main <see cref="NamedPipeServerStream"/>.<br/>
         /// This is necessary to allow a named pipe to connect processes started by different users.
         /// </summary>
-        private PipeSecurity IpcSecurity {
+        private static PipeSecurity IpcSecurity {
             get {
                 var pipeSecurity = new PipeSecurity();
                 var sid = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
