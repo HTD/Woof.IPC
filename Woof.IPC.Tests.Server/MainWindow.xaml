@@ -1,0 +1,56 @@
+﻿<Window
+    x:Class="Woof.IPC.Tests.Server.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:Woof.IPC.Tests.Server"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewmodels="clr-namespace:Woof.IPC.Tests.Server.ViewModels"
+    Title="Woof.IPC SERVER Test"
+    Width="800"
+    SizeToContent="Height"
+    WindowStartupLocation="CenterScreen"
+    mc:Ignorable="d">
+    <Window.DataContext>
+        <viewmodels:MainServerVM />
+    </Window.DataContext>
+    <StackPanel Margin="5" Orientation="Vertical">
+        <Label Content="Server:" />
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+            <Button
+                Command="{Binding}"
+                CommandParameter="Start"
+                Content="Start"
+                IsEnabled="{Binding IsStartEnabled}" />
+            <Button
+                Grid.Column="1"
+                Command="{Binding}"
+                CommandParameter="Stop"
+                Content="Stop"
+                IsEnabled="{Binding IsServerStarted}" />
+        </Grid>
+        <Label Content="Received:" />
+        <TextBox
+            x:Name="Received"
+            Height="100"
+            IsReadOnly="True"
+            Text="{Binding ReceivedText}"
+            TextChanged="Received_TextChanged"
+            VerticalScrollBarVisibility="Auto" />
+        <Label Content="Broadcast:" />
+        <TextBox
+            x:Name="Broadcast"
+            AcceptsReturn="False"
+            IsEnabled="{Binding IsSendEnabled}"
+            Text="{Binding TextToSend}" />
+        <Button
+            Command="{Binding}"
+            CommandParameter="Send"
+            Content="Send"
+            IsEnabled="{Binding IsSendEnabled}" />
+    </StackPanel>
+</Window>

@@ -71,6 +71,7 @@ namespace Woof.Ipc {
             using (var aes = Aes.Create()) {
                 aes.Mode = CipherMode.CBC;
                 aes.Padding = PaddingMode.PKCS7;
+                
                 using (var encryptor = aes.CreateEncryptor(Key, IV)) return encryptor.TransformFinalBlock(message, 0, message.Length);
             }
         }

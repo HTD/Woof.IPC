@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.IO.Pipes;
+using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text;
 
@@ -40,16 +41,6 @@ namespace Woof.Ipc {
                 else return null;
             }
         }
-
-        /// <summary>
-        /// Gets key data bytes.
-        /// If encryption is not configured yet, new key data is generated.
-        /// </summary>
-        public byte[] GetKeyData() {
-            if (Encryption == null) Encryption = new Encryption();
-            return Encryption.GetKeyData();
-        }
-
         /// <summary>
         /// Gets or sets option of using encrypted communication.
         /// </summary>
@@ -70,10 +61,10 @@ namespace Woof.Ipc {
         /// </summary>
         public bool Ready {
             get {
-                if (Pipe is AnonymousPipeClientStream) return (Pipe as AnonymousPipeClientStream).IsConnected;
-                if (Pipe is AnonymousPipeServerStream) return (Pipe as AnonymousPipeServerStream).IsConnected;
-                if (Pipe is NamedPipeClientStream) return (Pipe as NamedPipeClientStream).IsConnected;
-                if (Pipe is NamedPipeServerStream) return (Pipe as NamedPipeServerStream).IsConnected;
+                if (Pipe is AnonymousPipeClientStream apcs) return apcs.IsConnected;
+                if (Pipe is AnonymousPipeServerStream apss) return apss.IsConnected;
+                if (Pipe is NamedPipeClientStream npcs) return npcs.IsConnected;
+                if (Pipe is NamedPipeServerStream npss) return npss.IsConnected;
                 return true;
             }
         }
@@ -132,33 +123,45 @@ namespace Woof.Ipc {
         #region Methods
 
         /// <summary>
+        /// Gets key data bytes.
+        /// If encryption is not configured yet, new key data is generated.
+        /// </summary>
+        public byte[] GetKeyData() {
+            if (Encryption == null) Encryption = new Encryption();
+            return Encryption.GetKeyData();
+        }
+
+        /// <summary>
         /// Starts communication.
         /// </summary>
-        public void Start() {
+        /// <param name="timeout">The number of milliseconds to wait for the server to respond before the connection times out.</param>
+        /// <exception cref="TimeoutException">Could not connect to the server within the specified timeout period.</exception>
+        /// <exception cref="InvalidOperationException">The client is already connected.</exception>
+        /// <exception cref="IOException">The server is connected to another client and the time-out period has expired.</exception>
+        public void Start(int timeout = 0) {
             switch (Mode) {
                 case Modes.Client:
                     if (!IsAnonymousPipe) {
-                        var npc = Pipe as NamedPipeClientStream;
-                        npc.Connect();
+                        var npcs = Pipe as NamedPipeClientStream;
+                        if (timeout > 0) npcs.Connect(timeout); else npcs.Connect();
                     }
                     break;
                 case Modes.Server:
                     if (!IsAnonymousPipe) {
-                        var nps = Pipe as NamedPipeServerStream;
+                        var npss = Pipe as NamedPipeServerStream;
                         try {
-                            nps.BeginWaitForConnection(AsyncConnectionEstablished, null);
+                            npss.BeginWaitForConnection(AsyncConnectionEstablished, npss);
 #pragma warning disable CA1031 // Do not catch general exception types
                         }
                         catch (IOException) {
-                            nps.Disconnect();
-                            nps.BeginWaitForConnection(AsyncConnectionEstablished, null);
+                            npss.Disconnect();
+                            npss.BeginWaitForConnection(AsyncConnectionEstablished, npss);
                         }
 #pragma warning restore CA1031 // Do not catch general exception types
                     }
                     break;
             }
         }
-
         /// <summary>
         /// Reads boxed object from IPC channel.
         /// </summary>
@@ -215,7 +218,7 @@ namespace Woof.Ipc {
         public void WriteBytes(byte[] data) {
             if (IsDisposed) return;
             data = Dispatch(data);
-            if (Pipe is NamedPipeServerStream && !(Pipe as NamedPipeServerStream).IsConnected) {
+            if (Pipe is NamedPipeServerStream npss && !npss.IsConnected) {
                 if (WriteCache == null) WriteCache = new MemoryStream();
                 WriteCache.Write(data, 0, data.Length);
                 return;
@@ -230,7 +233,6 @@ namespace Woof.Ipc {
         public void WriteUTF8(string data) => WriteBytes(Encoding.UTF8.GetBytes(data));
 
         #endregion
-
         /// <summary>
         /// Underlying pipe operation modes.
         /// </summary>
@@ -315,7 +317,7 @@ namespace Woof.Ipc {
                 pipeSecurity.AddAccessRule(new PipeAccessRule(
                     sid,
                     PipeAccessRights.ReadWrite | PipeAccessRights.Synchronize,
-                    System.Security.AccessControl.AccessControlType.Allow
+                    AccessControlType.Allow
                 ));
                 return pipeSecurity;
             }
@@ -365,12 +367,13 @@ namespace Woof.Ipc {
         /// <param name="a">Status of asynchronous operation.</param>
         private void AsyncConnectionEstablished(IAsyncResult a) {
             if (IsDisposed) return;
-            var nps = Pipe as NamedPipeServerStream;
-            nps.EndWaitForConnection(a);
-            while (nps != null && nps.IsConnected) {
+            var npss = a.AsyncState as NamedPipeServerStream;
+            
+            npss.EndWaitForConnection(a);
+            while (npss != null && npss.IsConnected) {
                 if (WriteCache != null) {
                     var cachedData = WriteCache.ToArray();
-                    nps.Write(cachedData, 0, cachedData.Length);
+                    npss.Write(cachedData, 0, cachedData.Length);
                     WriteCache.Dispose();
                     WriteCache = null;
                 }
@@ -381,7 +384,7 @@ namespace Woof.Ipc {
                 if (dataEventArgs.Response != null) Write(dataEventArgs.Response);
             }
             if (IsDisposed) return;
-            if (nps.IsConnected) nps.Disconnect();
+            if (npss.IsConnected) npss.Disconnect();
             OnClientDisconnected(EventArgs.Empty);
             Start();
         }
@@ -411,7 +414,7 @@ namespace Woof.Ipc {
         public void Dispose() {
             if (!IsDisposed) {
                 IsDisposed = true;
-                if (Pipe is AnonymousPipeServerStream) (Pipe as AnonymousPipeServerStream).DisposeLocalCopyOfClientHandle();
+                if (Pipe is AnonymousPipeServerStream apss) apss.DisposeLocalCopyOfClientHandle();
                 Pipe.Dispose();
                 WriteCache?.Dispose();
             }

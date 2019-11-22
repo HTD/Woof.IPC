@@ -34,6 +34,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.ServiceModel" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -43,11 +44,23 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Ipc\AesCryptoCodec.cs" />
+    <Compile Include="Ipc\AesDeflateCodec.cs" />
     <Compile Include="Ipc\Channel.cs" />
     <Compile Include="Ipc\ClientProcess.cs" />
     <Compile Include="Ipc\CombinedChannel.cs" />
     <Compile Include="Ipc\Compression.cs" />
+    <Compile Include="Ipc\DeflateCodec.cs" />
+    <Compile Include="Ipc\DuplexNamedPipeClientStream.cs" />
+    <Compile Include="Ipc\DuplexNamedPipeServerStream.cs" />
     <Compile Include="Ipc\Encryption.cs" />
+    <Compile Include="Ipc\IMessageCodec.cs" />
+    <Compile Include="Ipc\IMessageCompression.cs" />
+    <Compile Include="Ipc\IMessageEncryption.cs" />
+    <Compile Include="Ipc\IpcBase.cs" />
+    <Compile Include="Ipc\IpcClient.cs" />
+    <Compile Include="Ipc\IpcServer.cs" />
+    <Compile Include="Ipc\BinaryMessageEventArgs.cs" />
     <Compile Include="Ipc\ProcessArguments.cs" />
     <Compile Include="Ipc\ProcessExtensions.cs" />
     <Compile Include="Ipc\Serialization.cs" />

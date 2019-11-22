@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>Woof.IPC</id>
-    <version>2.6.1</version>
+    <version>2.6.3</version>
     <title>Woof.IPC</title>
     <authors>Adam Łyskawa</authors>
     <owners>Adam Łyskawa</owners>
@@ -15,7 +15,7 @@
 
  Provides support to start processes in user context when the parent process is started from SYSTEM account.
  Provides a method for immediate session lockdown for the current local UI user.</description>
-    <releaseNotes>Passing production tests. This version is far from being optimal, however it's stable and tested. Full optimization, tests and examples are planned for version 3.0.</releaseNotes>
+    <releaseNotes>Added timeout argument to Channel.Start() method.</releaseNotes>
     <copyright>(c)2019 by CodeDog Ltd</copyright>
     <tags>code codedog dotnet windows system ipc process</tags>
   </metadata>
