@@ -102,8 +102,8 @@ namespace Woof.Ipc {
                 case Modes.Stream:
                     throw new ArgumentException("Invalid arguments for stream mode");
             }
-            if (keyData != null) Encryption = new Encryption(keyData);
-            Serialization = new Serialization();
+            if (keyData != null) KeyData = keyData;
+            Serializer = new BFSerializer();
         }
 
         /// <summary>
@@ -114,8 +114,8 @@ namespace Woof.Ipc {
         public Channel(Stream stream, byte[] keyData = null) {
             Mode = Modes.Stream;
             Pipe = stream;
-            if (keyData != null) Encryption = new Encryption(keyData);
-            Serialization = new Serialization();
+            if (keyData != null) KeyData = keyData;
+            Serializer = new BFSerializer();
         }
 
         #endregion
@@ -126,10 +126,7 @@ namespace Woof.Ipc {
         /// Gets key data bytes.
         /// If encryption is not configured yet, new key data is generated.
         /// </summary>
-        public byte[] GetKeyData() {
-            if (Encryption == null) Encryption = new Encryption();
-            return Encryption.GetKeyData();
-        }
+        public byte[] GetKeyData() => KeyData ?? (KeyData = (Codec as IMessageEncryption)?.GetKey());
 
         /// <summary>
         /// Starts communication.
@@ -166,27 +163,27 @@ namespace Woof.Ipc {
         /// Reads boxed object from IPC channel.
         /// </summary>
         /// <returns>Received object after deserialization and optional decryption and decompression.</returns>
-        public object Read() => Serialization.Deserialize(ReadBytes());
+        public object Read() => Serializer.Deserialize(ReadBytes());
 
         /// <summary>
         /// Reads typed object from IPC channel.
         /// </summary>
         /// <typeparam name="T">Serializable type.</typeparam>
         /// <returns>Received object after deserialization and optional decryption and decompression.</returns>
-        public T Read<T>() => Serialization.Deserialize<T>(ReadBytes());
+        public T Read<T>() => Serializer.Deserialize<T>(ReadBytes());
 
         /// <summary>
         /// Writes boxed object to IPC channel.
         /// </summary>
         /// <param name="data">Boxed object.</param>
-        public void Write(object data) => WriteBytes(Serialization.Serialize(data));
+        public void Write(object data) => WriteBytes(Serializer.Serialize(data));
 
         /// <summary>
         /// Writes typed object to IPC channel.
         /// </summary>
         /// <typeparam name="T">Serializable type.</typeparam>
         /// <param name="data">Data to serialize.</param>
-        public void Write<T>(T data) => WriteBytes(Serialization.Serialize<T>(data));
+        public void Write<T>(T data) => WriteBytes(Serializer.Serialize<T>(data));
 
         /// <summary>
         /// Reads raw bytes from IPC channel.
@@ -294,17 +291,23 @@ namespace Woof.Ipc {
         /// <summary>
         /// Data serialization module.
         /// </summary>
-        private readonly Serialization Serialization;
-        
+        private readonly IMessageSerializer Serializer;
+
         /// <summary>
-        /// Data compression module.
+        /// Message codec.
         /// </summary>
-        private Compression Compression;
-        
+        private IMessageCodec Codec;
+
         /// <summary>
-        /// Data encryption module.
+        /// True if the codec is determined. It is determined late, to enable <see cref="UseEncryption"/> and <see cref="UseCompression"/> properties
+        /// to take effect.
         /// </summary>
-        private Encryption Encryption;
+        private bool IsCodecDetermined;
+
+        /// <summary>
+        /// Optional encryption key data.
+        /// </summary>
+        private byte[] KeyData;
 
         /// <summary>
         /// <see cref="PipeSecurity"/> object for main <see cref="NamedPipeServerStream"/>.<br/>
@@ -324,21 +327,30 @@ namespace Woof.Ipc {
         }
 
         /// <summary>
+        /// Applies the codec on data if applicable.
+        /// </summary>
+        /// <param name="data">Binary data reference.</param>
+        /// <param name="decode">True to decode instead of encode.</param>
+        private void ApplyCodec(ref byte[] data, bool decode = false) {
+            if (!IsCodecDetermined) {
+                if (KeyData is null) UseEncryption = false;
+                if (UseEncryption && UseCompression) Codec = KeyData is null ? new AesDeflateCodec() : new AesDeflateCodec(KeyData);
+                else if (UseEncryption) Codec = KeyData is null ? new AesCryptoCodec() : new AesCryptoCodec(KeyData);
+                else if (UseCompression) Codec = new DeflateCodec();
+                IsCodecDetermined = true;
+            }
+            Codec?.Apply(ref data, decode);
+        }
+
+        /// <summary>
         /// Processes received data with encryption and compression modules.
         /// If enabled in properties - the data will be decrypted and then decompressed.
         /// </summary>
         /// <param name="data">Raw input data.</param>
         /// <returns>Processed data. Null for null or empty input.</returns>
         private byte[] Receive(byte[] data) {
-            if (data == null || data.Length < 1) return null;
-            if (UseEncryption) {
-                if (Encryption == null) throw new InvalidOperationException("Key data not found.");
-                data = Encryption.Decrypt(data);
-            }
-            if (UseCompression) {
-                if (Compression == null) Compression = new Compression();
-                data = Compression.Decompress(data);
-            }
+            if (data is null || data.Length < 1) return null;
+            ApplyCodec(ref data, decode: true);
             return data;
         }
 
@@ -349,15 +361,8 @@ namespace Woof.Ipc {
         /// <param name="data">Raw input data.</param>
         /// <returns>Processed data. Null for null or empty input.</returns>
         private byte[] Dispatch(byte[] data) {
-            if (data == null || data.Length < 1) throw new InvalidOperationException("Zero bytes dispatch is not acceptable.");
-            if (UseCompression) {
-                if (Compression == null) Compression = new Compression();
-                data = Compression.Compress(data);
-            }
-            if (UseEncryption) {
-                if (Encryption == null) Encryption = new Encryption();
-                data = Encryption.Encrypt(data);
-            }
+            if (data is null || data.Length < 1) throw new InvalidOperationException("Zero bytes dispatch is not acceptable.");
+            ApplyCodec(ref data, decode: false);
             return data;
         }
 

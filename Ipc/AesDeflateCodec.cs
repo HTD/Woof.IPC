@@ -5,7 +5,7 @@ namespace Woof.Ipc {
     /// <summary>
     /// Encryption and compression in one codec.
     /// </summary>
-    public sealed class AesDeflateCodec : IMessageEncryption, IMessageCompression, IDisposable {
+    public sealed class AesDeflateCodec : MessageCodecBase, IMessageEncryption, IDisposable {
 
         /// <summary>
         /// Gets the required key length in bytes.
@@ -34,14 +34,14 @@ namespace Woof.Ipc {
         /// </summary>
         /// <param name="data">Raw data.</param>
         /// <returns>Encoded data.</returns>
-        public byte[] Encode(byte[] data) => CryptoCodec.Encode(CompressionCodec.Encode(data));
+        public override byte[] Encode(byte[] data) => CryptoCodec.Encode(CompressionCodec.Encode(data));
         
         /// <summary>
         /// Decodes the data.
         /// </summary>
         /// <param name="data">Encoded data.</param>
         /// <returns>Decoded data.</returns>
-        public byte[] Decode(byte[] data) => CompressionCodec.Decode(CryptoCodec.Decode(data));
+        public override byte[] Decode(byte[] data) => CompressionCodec.Decode(CryptoCodec.Decode(data));
 
         /// <summary>
         /// Sets the key data.
@@ -68,7 +68,7 @@ namespace Woof.Ipc {
         /// <summary>
         /// Compression codec.
         /// </summary>
-        private readonly IMessageCompression CompressionCodec;
+        private readonly IMessageCodec CompressionCodec;
         
     }
 

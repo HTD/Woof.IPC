@@ -1,5 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-
+using System;
 using System.Linq;
 
 using Woof.Ipc;
@@ -35,6 +35,16 @@ namespace Woof.IPC.Tests {
             var m2b = codecB.Decode(c2);
             Assert.IsTrue(m1b.SequenceEqual(m1a));
             Assert.IsTrue(m2b.SequenceEqual(m2a));
+            var m1 = new byte[m1a.Length];
+            var m2 = new byte[m2a.Length];
+            Buffer.BlockCopy(m1a, 0, m1, 0, m1a.Length);
+            Buffer.BlockCopy(m2a, 0, m2, 0, m2a.Length);
+            codecA.Apply(ref m1);
+            codecA.Apply(ref m2);
+            codecA.Apply(ref m1, decode: true);
+            codecA.Apply(ref m2, decode: true);
+            Assert.IsTrue(m1.SequenceEqual(m1a));
+            Assert.IsTrue(m2.SequenceEqual(m2a));
         }
 
         /*

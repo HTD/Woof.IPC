@@ -6,7 +6,7 @@ namespace Woof.Ipc {
     /// <summary>
     /// AES symetric encryption codec.
     /// </summary>
-    public sealed class AesCryptoCodec : IMessageEncryption, IDisposable {
+    public sealed class AesCryptoCodec : MessageCodecBase, IMessageEncryption, IDisposable {
         
         /// <summary>
         /// Gets the required key length in bytes.
@@ -35,7 +35,7 @@ namespace Woof.Ipc {
         /// </summary>
         /// <param name="data">Data to encode.</param>
         /// <returns>IV + data.</returns>
-        public byte[] Encode(byte[] data) {
+        public override byte[] Encode(byte[] data) {
             using (var encryptor = Cipher.CreateEncryptor()) {
                 var encrypted = encryptor.TransformFinalBlock(data, 0, data.Length);
                 var pack = new byte[encrypted.Length + IvLength];
@@ -52,7 +52,7 @@ namespace Woof.Ipc {
         /// </summary>
         /// <param name="data">IV + encoded data.</param>
         /// <returns>Decoded data.</returns>
-        public byte[] Decode(byte[] data) {
+        public override byte[] Decode(byte[] data) {
             var iv = new byte[IvLength];
             Buffer.BlockCopy(data, 0, iv, 0, IvLength);
             Cipher.IV = iv;

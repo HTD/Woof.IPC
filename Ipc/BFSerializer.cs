@@ -6,14 +6,14 @@ namespace Woof.Ipc {
     /// <summary>
     /// IPC serialization module.
     /// </summary>
-    public class Serialization {
+    public class BFSerializer : IMessageSerializer {
 
         /// <summary>
         /// Serializes serializable boxed object.
         /// </summary>
         /// <param name="data">Serializable boxed object.</param>
         /// <returns>Binary data.</returns>
-        public static byte[] Serialize(object data) {
+        public byte[] Serialize(object data) {
             if (data == null) return new byte[] { 0 };
             using (var memoryStream = new MemoryStream()) {
                 new BinaryFormatter().Serialize(memoryStream, data);
@@ -34,7 +34,7 @@ namespace Woof.Ipc {
         /// </summary>
         /// <param name="data">Binary data.</param>
         /// <returns>Boxed object.</returns>
-        public static object Deserialize(byte[] data) {
+        public object Deserialize(byte[] data) {
             if (data == null || data.Length == 1 && data[0] == 0) return null;
             using (var memoryStream = new MemoryStream(data))
                 return new BinaryFormatter().Deserialize(memoryStream);
@@ -46,7 +46,7 @@ namespace Woof.Ipc {
         /// <typeparam name="T">Serializable type.</typeparam>
         /// <param name="data">Binary data.</param>
         /// <returns>Deserialized data.</returns>
-        public static T Deserialize<T>(byte[] data) => (T)Deserialize(data);
+        public T Deserialize<T>(byte[] data) => (T)Deserialize(data);
 
     }
 

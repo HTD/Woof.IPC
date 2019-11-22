@@ -3,6 +3,6 @@
     /// <summary>
     /// An interface for a message compression codec.
     /// </summary>
-    interface IMessageCompression : IMessageCodec { }
+    public interface IMessageCompression : IMessageCodec { }
 
 }

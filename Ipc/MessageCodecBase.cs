@@ -1,23 +1,23 @@
 ﻿namespace Woof.Ipc {
 
     /// <summary>
-    /// An interface for a message codec.
+    /// Defines basic message codec methods.
     /// </summary>
-    public interface IMessageCodec {
-        
+    public abstract class MessageCodecBase : IMessageCodec {
+
         /// <summary>
         /// Encodes the data.
         /// </summary>
         /// <param name="data">Raw data.</param>
         /// <returns>Encoded data.</returns>
-        byte[] Encode(byte[] data);
+        public abstract byte[] Encode(byte[] data);
 
         /// <summary>
         /// Decodes the data.
         /// </summary>
         /// <param name="data">Encoded data.</param>
         /// <returns>Decoded data.</returns>
-        byte[] Decode(byte[] data);
+        public abstract byte[] Decode(byte[] data);
 
         /// <summary>
         /// Encodes or decodes the data.
@@ -25,14 +25,14 @@
         /// <param name="data">Input data.</param>
         /// <param name="decode">Default: false - encode, true - decode.</param>
         /// <returns>Processed data.</returns>
-        byte[] Apply(byte[] data, bool decode = false);
+        public byte[] Apply(byte[] data, bool decode = false) => decode ? Decode(data) : Encode(data);
 
         /// <summary>
         /// Encodes or decodes the data.
         /// </summary>
         /// <param name="data">Input data.</param>
         /// <param name="decode">Default: false - encode, true - decode.</param>
-        void Apply(ref byte[] data, bool decode = false);
+        public void Apply(ref byte[] data, bool decode = false) => data = decode ? Decode(data) : Encode(data);
 
     }
 

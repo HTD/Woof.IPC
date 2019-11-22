@@ -3,7 +3,7 @@
     /// <summary>
     /// An interface for a message encryption codec.
     /// </summary>
-    interface IMessageEncryption : IMessageCodec {
+    public interface IMessageEncryption : IMessageCodec {
 
         /// <summary>
         /// Gets the required key length in bytes.
