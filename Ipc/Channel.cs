@@ -44,12 +44,24 @@ namespace Woof.Ipc {
         /// <summary>
         /// Gets or sets option of using encrypted communication.
         /// </summary>
-        public bool UseEncryption { get; set; }
+        public bool UseEncryption {
+            get => _UseEncryption;
+            set {
+                _UseEncryption = value;
+                SetCodec();
+            }
+        }
 
         /// <summary>
         /// Gets or sets option of using compressed communication.
         /// </summary>
-        public bool UseCompression { get; set; }
+        public bool UseCompression {
+            get => _UseCompression;
+            set {
+                _UseCompression = value;
+                SetCodec();
+            }
+        }
 
         /// <summary>
         /// Gets or sets message buffer size in bytes.
@@ -93,6 +105,7 @@ namespace Woof.Ipc {
                     Pipe = IsAnonymousPipe
                         ? (Stream)new AnonymousPipeClientStream(direction, id)
                         : (Stream)new NamedPipeClientStream(".", id, direction);
+
                     break;
                 case Modes.Server: // IMPORTANT: PipeSecurity setting is necessary to connect processes of different users with named pipes!
                     Pipe = IsAnonymousPipe
@@ -102,7 +115,10 @@ namespace Woof.Ipc {
                 case Modes.Stream:
                     throw new ArgumentException("Invalid arguments for stream mode");
             }
-            if (keyData != null) KeyData = keyData;
+            if (!(keyData is null)) {
+                KeyData = keyData;
+                UseEncryption = true;
+            }
             Serializer = new BFSerializer();
         }
 
@@ -126,7 +142,11 @@ namespace Woof.Ipc {
         /// Gets key data bytes.
         /// If encryption is not configured yet, new key data is generated.
         /// </summary>
-        public byte[] GetKeyData() => KeyData ?? (KeyData = (Codec as IMessageEncryption)?.GetKey());
+        public byte[] GetKeyData() {
+            if (!(KeyData is null)) return KeyData;
+            SetCodec();
+            return KeyData ?? (KeyData = (Codec as IMessageEncryption)?.GetKey());
+        }
 
         /// <summary>
         /// Starts communication.
@@ -272,22 +292,22 @@ namespace Woof.Ipc {
         /// Default buffer size for messages: 64KB.
         /// </summary>
         const int DefaultMessageBufferSize = 0x10000;
-        
+
         /// <summary>
         /// Generic pipe <see cref="Stream"/>.
         /// </summary>
         private readonly Stream Pipe;
-        
+
         /// <summary>
         /// True if underlying pipe is <see cref="AnonymousPipeClientStream"/> or <see cref="AnonymousPipeServerStream"/>.
         /// </summary>
         private readonly bool IsAnonymousPipe;
-        
+
         /// <summary>
         /// <see cref="MemoryStream"/> used as write cache.
         /// </summary>
         private MemoryStream WriteCache { get; set; }
-        
+
         /// <summary>
         /// Data serialization module.
         /// </summary>
@@ -303,6 +323,10 @@ namespace Woof.Ipc {
         /// to take effect.
         /// </summary>
         private bool IsCodecDetermined;
+
+        private bool _UseCompression;
+
+        private bool _UseEncryption;
 
         /// <summary>
         /// Optional encryption key data.
@@ -326,19 +350,20 @@ namespace Woof.Ipc {
             }
         }
 
+        private void SetCodec() {
+            if (UseEncryption && UseCompression) Codec = KeyData is null ? new AesDeflateCodec() : new AesDeflateCodec(KeyData);
+            else if (UseEncryption) Codec = KeyData is null ? new AesCryptoCodec() : new AesCryptoCodec(KeyData);
+            else if (UseCompression) Codec = new DeflateCodec();
+            IsCodecDetermined = true;
+        }
+
         /// <summary>
         /// Applies the codec on data if applicable.
         /// </summary>
         /// <param name="data">Binary data reference.</param>
         /// <param name="decode">True to decode instead of encode.</param>
         private void ApplyCodec(ref byte[] data, bool decode = false) {
-            if (!IsCodecDetermined) {
-                if (KeyData is null) UseEncryption = false;
-                if (UseEncryption && UseCompression) Codec = KeyData is null ? new AesDeflateCodec() : new AesDeflateCodec(KeyData);
-                else if (UseEncryption) Codec = KeyData is null ? new AesCryptoCodec() : new AesCryptoCodec(KeyData);
-                else if (UseCompression) Codec = new DeflateCodec();
-                IsCodecDetermined = true;
-            }
+            if (!IsCodecDetermined) SetCodec();
             Codec?.Apply(ref data, decode);
         }
 
@@ -373,7 +398,6 @@ namespace Woof.Ipc {
         private void AsyncConnectionEstablished(IAsyncResult a) {
             if (IsDisposed) return;
             var npss = a.AsyncState as NamedPipeServerStream;
-            
             npss.EndWaitForConnection(a);
             while (npss != null && npss.IsConnected) {
                 if (WriteCache != null) {
@@ -412,7 +436,6 @@ namespace Woof.Ipc {
         /// True if pipe streams has been disposed.
         /// </summary>
         private bool IsDisposed;
-
         /// <summary>
         /// Disposes pipe streams.
         /// </summary>

@@ -58,7 +58,7 @@ namespace Woof.Ipc {
         /// <param name="pipeName">Name of the pipe used for communication.</param>
         /// <param name="arguments">String argumets passed to executable.</param>
         public ClientProcess(string path, string pipeName, params string[] arguments) {
-            IpcChannel = new CombinedChannel(Channel.Modes.Server, pipeName);
+            IpcChannel = new CombinedChannel(Channel.Modes.Server, pipeName) { UseCompression = true };
             IpcChannel.DataReceived += PassDataReceived;
             IpcChannel.ClientDisconnected += PassClientDisconnected;
             var initialPipeId = IpcChannel.InitalPipeId;

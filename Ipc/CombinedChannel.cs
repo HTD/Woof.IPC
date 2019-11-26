@@ -12,20 +12,22 @@ namespace Woof.Ipc {
         /// <summary>
         /// Gets or sets the time (in milliseconds) given to establish / complete communication before <see cref="TimeoutException"/> is triggered.
         /// </summary>
-        public int Timeout { get; set; } = 5000;
+        public int Timeout { get; set; } = 600000; //5000;
 
         /// <summary>
         /// Gets or sets the option of using encrypted communication. Default true.
         /// </summary>
         public bool UseEncryption {
-            get => MainChannel.UseEncryption; set => MainChannel.UseEncryption = value;
+            get => MainChannel.UseEncryption;
+            set => MainChannel.UseEncryption = value;
         }
 
         /// <summary>
         /// Gets or sets the option of using compressed communication. Default true.
         /// </summary>
         public bool UseCompression {
-            get => MainChannel.UseCompression; set => MainChannel.UseCompression = value;
+            get => MainChannel.UseCompression;
+            set => MainChannel.UseCompression = value;
         }
 
         /// <summary>
@@ -61,7 +63,7 @@ namespace Woof.Ipc {
                     break;
                 case Channel.Modes.Server:
                     InitialChannel = new Channel(mode, PipeDirection.Out);
-                    MainChannel = new Channel(mode, PipeDirection.InOut, name);
+                    MainChannel = new Channel(mode, PipeDirection.InOut, name) { UseEncryption = true };
                     InitalPipeId = InitialChannel.PipeId;
                     InitialChannel.WriteBytes(MainChannel.GetKeyData());
                     MainChannel.DataReceived += PassDataReceivedFromMainChannel;
@@ -70,8 +72,9 @@ namespace Woof.Ipc {
                 default:
                     throw new ArgumentException("Mode not supported by CombinedChannel.");
             }
-            UseEncryption = true;
-            UseCompression = true;
+            //UseEncryption = true;
+            //UseCompression = true;
+
         }
 
         /// <summary>
@@ -201,7 +204,7 @@ namespace Woof.Ipc {
         #region Private
 
         private readonly Channel InitialChannel;
-        private readonly Channel MainChannel;
+        public readonly Channel MainChannel;
 
         void PassDataReceivedFromMainChannel(object sender, Channel.DataEventArgs e) => OnDataReceived(e);
 
