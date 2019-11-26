@@ -204,7 +204,7 @@ namespace Woof.Ipc {
         #region Private
 
         private readonly Channel InitialChannel;
-        public readonly Channel MainChannel;
+        private readonly Channel MainChannel;
 
         void PassDataReceivedFromMainChannel(object sender, Channel.DataEventArgs e) => OnDataReceived(e);
 
