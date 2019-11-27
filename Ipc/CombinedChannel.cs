@@ -12,23 +12,7 @@ namespace Woof.Ipc {
         /// <summary>
         /// Gets or sets the time (in milliseconds) given to establish / complete communication before <see cref="TimeoutException"/> is triggered.
         /// </summary>
-        public int Timeout { get; set; } = 600000; //5000;
-
-        /// <summary>
-        /// Gets or sets the option of using encrypted communication. Default true.
-        /// </summary>
-        public bool UseEncryption {
-            get => MainChannel.UseEncryption;
-            set => MainChannel.UseEncryption = value;
-        }
-
-        /// <summary>
-        /// Gets or sets the option of using compressed communication. Default true.
-        /// </summary>
-        public bool UseCompression {
-            get => MainChannel.UseCompression;
-            set => MainChannel.UseCompression = value;
-        }
+        public int Timeout { get; set; } = 5000;
 
         /// <summary>
         /// Gets initial (anonymous) pipe identifier.
@@ -58,23 +42,20 @@ namespace Woof.Ipc {
                         t.Elapsed += new ElapsedEventHandler((s, e) => { throw new TimeoutException(); });
                         t.Start();
                         InitialChannel = new Channel(mode, PipeDirection.In, id);
-                        MainChannel = new Channel(mode, PipeDirection.InOut, name, InitialChannel.ReadBytes());
+                        MainChannel = new Channel(mode, PipeDirection.InOut, name, new AesDeflateCodec(InitialChannel.ReadBytes()));
                     }
                     break;
                 case Channel.Modes.Server:
                     InitialChannel = new Channel(mode, PipeDirection.Out);
-                    MainChannel = new Channel(mode, PipeDirection.InOut, name) { UseEncryption = true };
+                    MainChannel = new Channel(mode, PipeDirection.InOut, name, new AesDeflateCodec());
                     InitalPipeId = InitialChannel.PipeId;
-                    InitialChannel.WriteBytes(MainChannel.GetKeyData());
+                    InitialChannel.WriteBytes(MainChannel.GetKey());
                     MainChannel.DataReceived += PassDataReceivedFromMainChannel;
                     MainChannel.ClientDisconnected += PassClientDisconnectedFromMainChannel;
                     break;
                 default:
                     throw new ArgumentException("Mode not supported by CombinedChannel.");
             }
-            //UseEncryption = true;
-            //UseCompression = true;
-
         }
 
         /// <summary>
@@ -85,7 +66,7 @@ namespace Woof.Ipc {
         /// <summary>
         /// Writes key data again to the initial channel.
         /// </summary>
-        public void Reinitialize() => InitialChannel.WriteBytes(MainChannel.GetKeyData());
+        public void Reinitialize() => InitialChannel.WriteBytes(MainChannel.GetKey());
 
         /// <summary>
         /// Reads data from main channel as object.

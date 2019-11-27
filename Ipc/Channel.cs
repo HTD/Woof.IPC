@@ -41,27 +41,8 @@ namespace Woof.Ipc {
                 else return null;
             }
         }
-        /// <summary>
-        /// Gets or sets option of using encrypted communication.
-        /// </summary>
-        public bool UseEncryption {
-            get => _UseEncryption;
-            set {
-                _UseEncryption = value;
-                SetCodec();
-            }
-        }
 
-        /// <summary>
-        /// Gets or sets option of using compressed communication.
-        /// </summary>
-        public bool UseCompression {
-            get => _UseCompression;
-            set {
-                _UseCompression = value;
-                SetCodec();
-            }
-        }
+
 
         /// <summary>
         /// Gets or sets message buffer size in bytes.
@@ -96,10 +77,15 @@ namespace Woof.Ipc {
         /// <param name="mode">Connection mode: Client, Server or Stream.</param>
         /// <param name="direction">Underlying pipe direction: In, Out or InOut.</param>
         /// <param name="id">Anonymous pipe id as number, or named pipe name.</param>
-        /// <param name="keyData">Key data used for encryption, for default null new key will be generated.</param>
-        public Channel(Modes mode, PipeDirection direction, string id = null, byte[] keyData = null) {
+        /// <param name="codec">Message codec for message encryption and compression.</param>
+        
+        public Channel(Modes mode, PipeDirection direction, string id = null, IMessageCodec codec = null) {
             Mode = mode;
             IsAnonymousPipe = id == null || Int32.TryParse(id, out _);
+            Codec = codec;
+            
+                
+            
             switch (mode) {
                 case Modes.Client:
                     Pipe = IsAnonymousPipe
@@ -115,38 +101,29 @@ namespace Woof.Ipc {
                 case Modes.Stream:
                     throw new ArgumentException("Invalid arguments for stream mode");
             }
-            if (!(keyData is null)) {
-                KeyData = keyData;
-                UseEncryption = true;
-            }
             Serializer = new BFSerializer();
         }
 
-        /// <summary>
-        /// Creates IPC channel in stream mode.
-        /// </summary>
-        /// <param name="stream">Communication stream.</param>
-        /// <param name="keyData">Optional encryption key data.</param>
-        public Channel(Stream stream, byte[] keyData = null) {
-            Mode = Modes.Stream;
-            Pipe = stream;
-            if (keyData != null) KeyData = keyData;
-            Serializer = new BFSerializer();
-        }
+        ///// <summary>
+        ///// Creates IPC channel in stream mode.
+        ///// </summary>
+        ///// <param name="stream">Communication stream.</param>
+        ///// <param name="keyData">Optional encryption key data.</param>
+        //public Channel(Stream stream, byte[] keyData = null) {
+        //    Mode = Modes.Stream;
+        //    Pipe = stream;
+        //    if (keyData != null) KeyData = keyData;
+        //    Serializer = new BFSerializer();
+        //}
 
         #endregion
 
         #region Methods
 
         /// <summary>
-        /// Gets key data bytes.
-        /// If encryption is not configured yet, new key data is generated.
+        /// Gets message encryption key from codec, if the codec is set and supports it. Null otherwise.
         /// </summary>
-        public byte[] GetKeyData() {
-            if (!(KeyData is null)) return KeyData;
-            SetCodec();
-            return KeyData ?? (KeyData = (Codec as IMessageEncryption)?.GetKey());
-        }
+        public byte[] GetKey() => (Codec as IMessageEncryption)?.GetKey();
 
         /// <summary>
         /// Starts communication.
@@ -218,7 +195,9 @@ namespace Woof.Ipc {
                     length = Pipe.Read(readBuffer, 0, MessageBufferSize);
                     outputStream.Write(readBuffer, 0, length);
                 } while (length == MessageBufferSize);
-                return Receive(outputStream.ToArray());
+                var result = outputStream.ToArray();
+                if (result is null || result.Length < 1) return null;
+                return Codec is null ? result : Codec.Decode(result);
             }
         }
 
@@ -234,7 +213,8 @@ namespace Woof.Ipc {
         /// <param name="data">Raw data bytes.</param>
         public void WriteBytes(byte[] data) {
             if (IsDisposed) return;
-            data = Dispatch(data);
+            if (data is null || data.Length < 1) throw new InvalidOperationException("Zero bytes dispatch is not acceptable.");
+            if (Codec != null) data = Codec.Encode(data);
             if (Pipe is NamedPipeServerStream npss && !npss.IsConnected) {
                 if (WriteCache == null) WriteCache = new MemoryStream();
                 WriteCache.Write(data, 0, data.Length);
@@ -316,22 +296,12 @@ namespace Woof.Ipc {
         /// <summary>
         /// Message codec.
         /// </summary>
-        private IMessageCodec Codec;
+        private readonly IMessageCodec Codec;
 
-        /// <summary>
-        /// True if the codec is determined. It is determined late, to enable <see cref="UseEncryption"/> and <see cref="UseCompression"/> properties
-        /// to take effect.
-        /// </summary>
-        private bool IsCodecDetermined;
-
-        private bool _UseCompression;
-
-        private bool _UseEncryption;
-
-        /// <summary>
-        /// Optional encryption key data.
-        /// </summary>
-        private byte[] KeyData;
+        ///// <summary>
+        ///// Optional encryption key data.
+        ///// </summary>
+        //private byte[] KeyData;
 
         /// <summary>
         /// <see cref="PipeSecurity"/> object for main <see cref="NamedPipeServerStream"/>.<br/>
@@ -348,47 +318,6 @@ namespace Woof.Ipc {
                 ));
                 return pipeSecurity;
             }
-        }
-
-        private void SetCodec() {
-            if (UseEncryption && UseCompression) Codec = KeyData is null ? new AesDeflateCodec() : new AesDeflateCodec(KeyData);
-            else if (UseEncryption) Codec = KeyData is null ? new AesCryptoCodec() : new AesCryptoCodec(KeyData);
-            else if (UseCompression) Codec = new DeflateCodec();
-            IsCodecDetermined = true;
-        }
-
-        /// <summary>
-        /// Applies the codec on data if applicable.
-        /// </summary>
-        /// <param name="data">Binary data reference.</param>
-        /// <param name="decode">True to decode instead of encode.</param>
-        private void ApplyCodec(ref byte[] data, bool decode = false) {
-            if (!IsCodecDetermined) SetCodec();
-            Codec?.Apply(ref data, decode);
-        }
-
-        /// <summary>
-        /// Processes received data with encryption and compression modules.
-        /// If enabled in properties - the data will be decrypted and then decompressed.
-        /// </summary>
-        /// <param name="data">Raw input data.</param>
-        /// <returns>Processed data. Null for null or empty input.</returns>
-        private byte[] Receive(byte[] data) {
-            if (data is null || data.Length < 1) return null;
-            ApplyCodec(ref data, decode: true);
-            return data;
-        }
-
-        /// <summary>
-        /// Process data being dispatched with encryption and compression modules.
-        /// If enabled in properties - the data will be compressed and then encrypted.
-        /// </summary>
-        /// <param name="data">Raw input data.</param>
-        /// <returns>Processed data. Null for null or empty input.</returns>
-        private byte[] Dispatch(byte[] data) {
-            if (data is null || data.Length < 1) throw new InvalidOperationException("Zero bytes dispatch is not acceptable.");
-            ApplyCodec(ref data, decode: false);
-            return data;
         }
 
         /// <summary>
@@ -443,6 +372,7 @@ namespace Woof.Ipc {
             if (!IsDisposed) {
                 IsDisposed = true;
                 if (Pipe is AnonymousPipeServerStream apss) apss.DisposeLocalCopyOfClientHandle();
+                if (Codec is IDisposable disposableCodec) disposableCodec.Dispose();
                 Pipe.Dispose();
                 WriteCache?.Dispose();
             }

@@ -58,55 +58,46 @@ namespace Woof.IPC.Tests {
 
         [TestMethod]
         public void NamedPipeChannelTest() {
-            var key = new byte[32];
-            var prng = new Random();
-            prng.NextBytes(key);
-            
-            var serverChannel = new Channel(Channel.Modes.Server, System.IO.Pipes.PipeDirection.InOut, "TEST_IPC", key);
+            var serverCodecs = new IMessageCodec[] { null, new DeflateCodec(), new AesCryptoCodec(), new AesDeflateCodec() };
+            var clientCodecs = new IMessageCodec[] { null, new DeflateCodec(), new AesCryptoCodec((serverCodecs[2] as IMessageEncryption).GetKey()), new AesDeflateCodec((serverCodecs[3] as IMessageEncryption).GetKey()) };
+            for (var i = 0; i < 4; i++) {
+                var serverChannel = new Channel(Channel.Modes.Server, System.IO.Pipes.PipeDirection.InOut, "TEST_IPC", serverCodecs[i]);
+                serverChannel.Start();
+                serverChannel.DataReceived += (s, e) => {
+                    Console.WriteLine(e.Request.ToString());
+                    e.Response = "OK";
+                };
+                Task.Run(() => {
+                    using var clientChannel = new Channel(Channel.Modes.Client, System.IO.Pipes.PipeDirection.InOut, "TEST_IPC", clientCodecs[i]);
+                    clientChannel.Start();
+                    clientChannel.Write((object)"HELLO");
+                    Thread.Sleep(1);
+                    var responseString = clientChannel.Read().ToString();
+                    Console.WriteLine(responseString);
+                }).Wait();
+                Thread.Sleep(1);
+                serverChannel.Dispose();
+
+            }
+        }
+
+        [TestMethod]
+        public void CombinedChannelTest() {
+            var serverChannel = new CombinedChannel(Channel.Modes.Server, "TEST_IPC");
             serverChannel.Start();
             serverChannel.DataReceived += (s, e) => {
                 Console.WriteLine(e.Request.ToString());
                 e.Response = "OK";
             };
             Task.Run(() => {
-                using var clientChannel = new Channel(Channel.Modes.Client, System.IO.Pipes.PipeDirection.InOut, "TEST_IPC", key);
+                using var clientChannel = new CombinedChannel(Channel.Modes.Client, "TEST_IPC", serverChannel.InitalPipeId);
                 clientChannel.Start();
                 clientChannel.Write((object)"HELLO");
-                Thread.Sleep(1000);
+                Thread.Sleep(1);
                 var responseString = clientChannel.Read().ToString();
                 Console.WriteLine(responseString);
             }).Wait();
-            Thread.Sleep(100);
-            serverChannel.Dispose();
-        }
-
-        [TestMethod]
-        public void CombinedChannelTest() {
-            var serverChannel = new CombinedChannel(Channel.Modes.Server, "TEST_IPC") { UseCompression = true };
-            var channelId = serverChannel.InitalPipeId;
-            serverChannel.DataReceived += (s, e) => { e.Response = "OK"; };
-            
-            ;
-            var clientChannel = new CombinedChannel(Channel.Modes.Client, "TEST_IPC", channelId) { UseCompression = true };
-
-            ;
-
-
-            serverChannel.Start();
-            clientChannel.Start();
-
-            var clientTask = new Task(() => {
-                clientChannel.Write((object)"HELLO");
-                Thread.Sleep(10);
-                var responseString = clientChannel.Read().ToString();
-                Console.WriteLine(responseString);
-                clientChannel.Dispose();
-            }, TaskCreationOptions.LongRunning);
-            clientTask.Start();
-            clientTask.Wait();
-            Thread.Sleep(10);
-
-            clientChannel.Dispose();
+            Thread.Sleep(1);
             serverChannel.Dispose();
         }
 
